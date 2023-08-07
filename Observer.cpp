@@ -5,139 +5,200 @@
 #include <iostream>
 #include <windows.h>
 #include <fstream>
+#include <chrono>
+#include <ctime>
+#include <iomanip>
 
-using namespace std;
-
-class MouseObserver {
+class Console
+{
 public:
-    virtual void OnEnter() = 0;
-    virtual void OnLeave() = 0;
-};
+    void set_size(int width, int height)
+    {
+		HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+		COORD new_size;
+        new_size.X = width;
+        new_size.Y = height;
 
-class Console {
-public:
-    void Print(const string& text) {
-        cout << text << endl;
-    }
+		SetConsoleScreenBufferSize(console, new_size);
 
-    void SetTextColor(int color) {
-        HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-        SetConsoleTextAttribute(hConsole, color);
-    }
+		SMALL_RECT rect;
+		rect.Top = 0;
+		rect.Left = 0;
+		rect.Bottom = new_size.Y - 1;
+		rect.Right = new_size.X - 1;
 
-    int GetWindowWidth() {
-        CONSOLE_SCREEN_BUFFER_INFO csbi;
-        GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
-        return csbi.srWindow.Bottom;
-    }
+		SetConsoleWindowInfo(console, TRUE, &rect);
+	}
 
-    int GetWindowHeight() {
-        CONSOLE_SCREEN_BUFFER_INFO csbi;
-        GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
-        return csbi.srWindow.Right;
-    }
-};
+    void set_text_color(int color)
+    {
+		HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+		SetConsoleTextAttribute(console, color);
+	}
 
-class LogFile {
-public:
-    LogFile() {
-        ofstream ofs("log.txt");
-        ofs.close();
-    }
-
-    void Write(const string& text) {
-        ofstream ofs("log.txt", ios::app);
-        ofs << text << endl;
-        ofs.close();
+    RECT get_size()
+    {
+        HWND console_window = GetConsoleWindow();
+        RECT window_rect;
+        GetWindowRect(console_window, &window_rect);
+        return window_rect;
     }
 };
 
-class MouseWatcher : public MouseObserver {
+class Log_file
+{
+private:
+    std::ofstream output;
+
+public:
+    Log_file(const std::string& filename) : output(filename, std::ios::app) {}
+
+    void write(const std::string& text)
+    {
+        output << text << std::endl;
+    }
+
+    ~Log_file()
+    {
+		output.close();
+	}
+};
+
+class Observer
+{
 private:
     Console* console;
-    LogFile* logFile;
+    Log_file* log_file;
+
+    char* get_time()
+    {
+        auto now = std::chrono::system_clock::now();
+        std::time_t time = std::chrono::system_clock::to_time_t(now);
+        std::tm timeinfo;
+        localtime_s(&timeinfo, &time);
+        char buffer[20];
+        std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
+        return buffer;
+    }
 
 public:
-    MouseWatcher(Console* console, LogFile* logFile) {
-        this->console = console;
-        this->logFile = logFile;
+    Observer(Console* console, Log_file* log_file): console(console), log_file(log_file) {}
+
+    void entry_action()
+    {
+        console->set_text_color(FOREGROUND_BLUE | FOREGROUND_INTENSITY);
+        std::string message= this->get_time();
+        message += " -> ENTER";
+        log_file->write(message);
     }
 
-    void OnEnter() {
-        console->SetTextColor(FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_INTENSITY);
-        logFile->Write("Enter");
+    void exit_action() {
+        console->set_text_color(FOREGROUND_RED | FOREGROUND_INTENSITY);
+        std::string message = this->get_time();
+        message += " -> LEAVE";
+        log_file->write(message);
     }
-
-    void OnLeave() {
-        console->SetTextColor(FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY);
-        logFile->Write("Leave");
-    }
-
 };
 
+void print_name()
+{
+    std::string text =
+        " _______  ______   _______  _______  _______           _______  _______ \n"
+        "(  ___  )(  ___ \\ (  ____ \\(  ____ \\(  ____ )|\\     /|(  ____ \\(  ____ )\n"
+        "| (   ) || (   ) )| (    \\/| (    \\/| (    )|| )   ( || (    \\/| (    )|\n"
+        "| |   | || (__/ / | (_____ | (__    | (____)|| |   | || (__    | (____)|\n"
+        "| |   | ||  __ (  (_____  )|  __)   |     __)( (   ) )|  __)   |     __)\n"
+        "| |   | || (  \\ \\       ) || (      | (\\ (    \\ \\_/ / | (      | (\\ (   \n"
+        "| (___) || )___) )/\\____) || (____/\\| ) \\ \\__  \\   /  | (____/\\| ) \\ \\__\n"
+        "(_______)|/ \\___/ \\_______)(_______/|/   \\__/   \\_/   (_______/|/   \\__/\n";
+    std::cout << text << std::endl;
+}
 
+void print_open_eye()
+{
+    std::string open_eye =
+        "                              ################       \n"
+        "                          #######################    \n"
+        "                         #####      ###       #####  \n"
+        "                       ####        #####         ####\n"
+        "                         ####       ###        ####  \n"
+        "                          ####               ####    \n"
+        "                              ################       \n";
+    std::cout << open_eye;
+}
 
+void print_closed_eye()
+{
+    std::string closed_eye =
+        "                              ################       \n"
+        "                          #######################    \n"
+        "                         #####                #####  \n"
+        "                       ####                      ####\n"
+        "                         ##########################  \n"
+        "                          ####               ####    \n"
+        "                              ################       \n";
+    std::cout << closed_eye;
+}
 
-int main() {
+int main()
+{
+    bool is_inside = false;
+    const std::string filename = "log.txt";
+
     Console console;
-    LogFile logFile;
-    MouseWatcher mouseWatcher(&console, &logFile);
+    Log_file log_file(filename);
+    Observer observer(&console, &log_file);
 
-    console.Print("hello world");
-    std::cout << console.GetWindowWidth() << std::endl;
-    std::cout << console.GetWindowHeight() << std::endl;
+    console.set_size(75, 20);
+    console.set_text_color(FOREGROUND_GREEN | FOREGROUND_INTENSITY);
+    print_name();
 
     MSG msg;
-    while (true) {
-        if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
-            if (msg.message == WM_QUIT) {
+
+    while (true)
+    {
+        if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+        {
+            if (msg.message == WM_QUIT)
+            {
                 break;
             }
-
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
 
-        if (GetAsyncKeyState(VK_ESCAPE)) {
+        if (GetAsyncKeyState(VK_ESCAPE))
+        {
             break;
         }
 
-        HWND consoleWindow = GetConsoleWindow();
+        GetCursorPos(&msg.pt);
+        RECT window_rect = console.get_size();
+        if (msg.pt.x >= window_rect.left && msg.pt.x <= window_rect.right &&
+            msg.pt.y >= window_rect.top && msg.pt.y <= window_rect.bottom)
+        {
+            if (!is_inside)
+            {
+                observer.entry_action();
+                is_inside = true;
 
-        RECT windowRect;
-        GetWindowRect(consoleWindow, &windowRect);
-
-        RECT clientRect;
-        GetClientRect(consoleWindow, &clientRect);
-
-        std::cout << "Console Window Coordinates:\n";
-        std::cout << "Screen Coordinates:\n";
-        std::cout << "Left: " << windowRect.left << "\n";
-        std::cout << "Top: " << windowRect.top << "\n";
-        std::cout << "Right: " << windowRect.right << "\n";
-        std::cout << "Bottom: " << windowRect.bottom << "\n\n";
-
-        std::cout << "Client Coordinates:\n";
-        std::cout << "Left: " << clientRect.left << "\n";
-        std::cout << "Top: " << clientRect.top << "\n";
-        std::cout << "Right: " << clientRect.right << "\n";
-        std::cout << "Bottom: " << clientRect.bottom << "\n";
-
-        std::cout << console.GetWindowWidth() << " " << console.GetWindowHeight() << std::endl;
-
-        if (GetCursorPos(&msg.pt)) {
-            if (msg.pt.x >= 0 && msg.pt.x < console.GetWindowWidth() &&
-                msg.pt.y >= 0 && msg.pt.y < console.GetWindowHeight()) {
-                mouseWatcher.OnEnter();
-                std::cout << "XXX " << msg.pt.x << " " << msg.pt.y << std::endl;
-            }
-            else {
-                mouseWatcher.OnLeave();
-                std::cout << "YYY " << msg.pt.x << " " << msg.pt.y << std::endl;
-
+                system("cls");
+                print_name();
+                print_open_eye();
             }
         }
-        Sleep(1000);
+        else
+        {
+            if (is_inside)
+            {
+                observer.exit_action();
+                is_inside = false;
+
+                system("cls");
+                print_name();
+                print_closed_eye();
+            }
+        }
     }
 
     return 0;
