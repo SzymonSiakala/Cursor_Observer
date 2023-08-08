@@ -4,12 +4,19 @@ Mouse_Observer::Mouse_Observer(Console* console, Log_file* log_file) : console(c
 
 char* Mouse_Observer::get_time()
 {
-    auto now = std::chrono::system_clock::now();
-    std::time_t time = std::chrono::system_clock::to_time_t(now);
-    std::tm timeinfo;
-    localtime_s(&timeinfo, &time);
-    char buffer[20];
-    std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
+    const auto now = std::chrono::system_clock::now();
+    const std::time_t time = std::chrono::system_clock::to_time_t(now);
+    std::tm timeinfo = {};
+    if (localtime_s(&timeinfo, &time))
+    {
+        throw std::runtime_error("Unable to get the local time.");
+    }
+    char buffer[25] = {};
+    if (std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo) == 0)
+    {
+		throw std::runtime_error("Unable to format the time.");
+	}
+
     return buffer;
 }
 
@@ -21,7 +28,8 @@ void Mouse_Observer::entry_action()
     log_file->write(message);
 }
 
-void Mouse_Observer::exit_action() {
+void Mouse_Observer::exit_action()
+{
     console->set_text_color(FOREGROUND_RED | FOREGROUND_INTENSITY);
     std::string message = this->get_time();
     message += " -> LEAVE";

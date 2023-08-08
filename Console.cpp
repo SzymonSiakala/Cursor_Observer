@@ -1,33 +1,35 @@
 #include "Console.h"
 
-void Console::set_size(int width, int height)
+void Console::set_size(const int width, const int height)
 {
-	HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
-	COORD new_size;
-	new_size.X = width;
-	new_size.Y = height;
+	const HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+	SMALL_RECT rect = { 0, 0, 0, 0 };
+	rect.Bottom = height - 1;
+	rect.Right = width - 1;
 
-	SetConsoleScreenBufferSize(console, new_size);
-
-	SMALL_RECT rect;
-	rect.Top = 0;
-	rect.Left = 0;
-	rect.Bottom = new_size.Y - 1;
-	rect.Right = new_size.X - 1;
-
-	SetConsoleWindowInfo(console, TRUE, &rect);
+	if (!SetConsoleWindowInfo(console, TRUE, &rect))
+	{
+		throw std::runtime_error("Unable to resize console window.");
+	}
 }
 
-void Console::set_text_color(int color)
+void Console::set_text_color(const int color)
 {
-	HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
-	SetConsoleTextAttribute(console, color);
+	const HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+	if (!SetConsoleTextAttribute(console, color))
+	{
+		throw std::runtime_error("Unable to set console text color.");
+	}
 }
 
 RECT Console::get_size()
 {
-	HWND console_window = GetConsoleWindow();
-	RECT window_rect;
-	GetWindowRect(console_window, &window_rect);
-	return window_rect;
+	const HWND console_window = GetConsoleWindow();
+	RECT rect = { 0, 0, 0, 0 };
+	if (!GetWindowRect(console_window, &rect))
+	{
+		throw std::runtime_error("Unable to get console window size.");
+	}
+
+	return rect;
 }

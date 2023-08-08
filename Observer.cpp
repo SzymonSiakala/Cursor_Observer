@@ -8,7 +8,7 @@
 
 void print_name()
 {
-    std::string text =
+    const std::string text =
         " _______  ______   _______  _______  _______           _______  _______ \n"
         "(  ___  )(  ___ \\ (  ____ \\(  ____ \\(  ____ )|\\     /|(  ____ \\(  ____ )\n"
         "| (   ) || (   ) )| (    \\/| (    \\/| (    )|| )   ( || (    \\/| (    )|\n"
@@ -22,7 +22,7 @@ void print_name()
 
 void print_open_eye()
 {
-    std::string open_eye =
+    const std::string open_eye =
         "                              ################       \n"
         "                          #######################    \n"
         "                         #####      ###       #####  \n"
@@ -35,7 +35,7 @@ void print_open_eye()
 
 void print_closed_eye()
 {
-    std::string closed_eye =
+    const std::string closed_eye =
         "                              ################       \n"
         "                          #######################    \n"
         "                         #####                #####  \n"
@@ -51,51 +51,60 @@ int main()
     bool is_inside = false;
     const std::string filename = "log.txt";
 
-    Console console;
-    Log_file log_file(filename);
-    Mouse_Observer mouse_observer(&console, &log_file);
-
-    console.set_size(75, 20);
-    console.set_text_color(FOREGROUND_GREEN | FOREGROUND_INTENSITY);
-    print_name();
-
-    MSG msg;
-
-    while (true)
+    try
     {
-        if (GetAsyncKeyState(VK_ESCAPE))
-        {
-            break;
-        }
+        Console console;
+        Log_file log_file(filename);
+        Mouse_Observer mouse_observer(&console, &log_file);
 
-        GetCursorPos(&msg.pt);
-        RECT window_rect = console.get_size();
-        if (msg.pt.x >= window_rect.left && msg.pt.x <= window_rect.right &&
-            msg.pt.y >= window_rect.top && msg.pt.y <= window_rect.bottom)
+        console.set_size(75, 20);
+        console.set_text_color(FOREGROUND_GREEN | FOREGROUND_INTENSITY);
+        print_name();
+
+        MSG msg = { 0 };
+
+        while (true)
         {
-            if (!is_inside)
+            if (GetAsyncKeyState(VK_ESCAPE))
             {
-                mouse_observer.entry_action();
-                is_inside = true;
-
-                system("cls");
-                print_name();
-                print_open_eye();
+                break;
             }
-        }
-        else
-        {
-            if (is_inside)
-            {
-                mouse_observer.exit_action();
-                is_inside = false;
 
-                system("cls");
-                print_name();
-                print_closed_eye();
+            GetCursorPos(&msg.pt);
+            const RECT window_rect = console.get_size();
+            if (msg.pt.x >= window_rect.left && msg.pt.x <= window_rect.right &&
+                msg.pt.y >= window_rect.top && msg.pt.y <= window_rect.bottom)
+            {
+                if (!is_inside)
+                {
+                    mouse_observer.entry_action();
+                    is_inside = true;
+
+                    system("cls");
+                    print_name();
+                    print_open_eye();
+                }
+            }
+            else
+            {
+                if (is_inside)
+                {
+                    mouse_observer.exit_action();
+                    is_inside = false;
+
+                    system("cls");
+                    print_name();
+                    print_closed_eye();
+                }
             }
         }
     }
-
+    catch (const std::exception& e)
+    {
+        system("cls");
+		std::cerr << "ERROR: " << e.what() << std::endl;
+        return 1;
+	}
+    
     return 0;
 }
